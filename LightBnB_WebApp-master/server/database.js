@@ -117,21 +117,49 @@ exports.getAllReservations = getAllReservations;
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
+// search:
 const getAllProperties = function(options, limit = 10) {
-  // const limitedProperties = {};
-  // for (let i = 1; i <= limit; i++) {
-  //   limitedProperties[i] = properties[i];
-  // }
-  // return Promise.resolve(limitedProperties);
 
-  return pool.query(`
-    SELECT * FROM properties
-    LIMIT $1
-    `, [limit])
-    // .then(res => {
-    //   console.log(res.rows)    //for test
-    // });
-    .then(res => res.rows);
+  // 1 Setup an array to hold any parameters that may be available for the query
+  const queryParams = [];
+
+  // 2 Start the query with all information that comes before WHERE
+  let queryString = `
+    SELECT properties.*, avg(property_reviews.rating) as average_rating
+    FROM properties
+    JOIN property_reviews ON properties.id = property_id;
+  `;
+
+  // 3 Check if a city has been passed in as an option
+  if (options.city) {
+    queryParams.push(`%${options.city}%`); //Add the city to the params array
+    queryString += `WHERE city LIKE $${queryParams.length} `; //create a WHERE clause for the city
+  } //              We can use the length of the array to dynamically get the $n placeholder number
+
+  // 4 Add any query that comes after the WHERE clause
+  queryParams.push(limit);
+  queryString += `
+   GROUP BY properties.id
+   ORDER BY cost_per_night
+   LIMIT $${queryParams.length};
+  `;
+
+  // 5 Console log everything just to make sure we've done it right
+  console.log(queryString, queryParams);
+
+  // 6 Run the query
+  return pool.query(queryString, queryParams)
+  .then(res => res.rows);
+
+  //old:
+  // return pool.query(`
+  //   SELECT * FROM properties
+  //   LIMIT $1
+  //   `, [limit])
+  //   // .then(res => {
+  //   //   console.log(res.rows)    //for test
+  //   // });
+  //   .then(res => res.rows);
 
 }
 exports.getAllProperties = getAllProperties;
