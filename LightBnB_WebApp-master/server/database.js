@@ -17,24 +17,22 @@ const pool = new Pool({
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithEmail = function(email) {
-  // let user;
-  // for (const userId in users) {
-  //   user = users[userId];
-  //   if (user.email.toLowerCase() === email.toLowerCase()) {
-  //     break;
-  //   } else {
-  //     user = null;
-  //   }
-  // }
-  // return Promise.resolve(user);
-  return pool.query(`
-  SELECT * FROM users
-  WHERE email = $1
-  `, [email])
-    .then(res => res.rows[0])
-      //console.log("res.rows[0]", res.rows[0]) obj of row
+  const queryString = `
+    SELECT *
+    FROM users
+    WHERE email = $1;
+  `;
+  const values = [email];
+  return pool.query(queryString, values)
+    .then(res => res.rows[0] || null)
+    //console.log("res.rows[0]", res.rows[0]) obj of row
     .catch(e => console.log(e));
-
+  
+  // OR : 
+  //return pool.query(`
+  // SELECT * FROM users
+  // WHERE email = $1
+  // `, [email])
 }
 exports.getUserWithEmail = getUserWithEmail;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -46,11 +44,14 @@ exports.getUserWithEmail = getUserWithEmail;
  */
 const getUserWithId = function(id) {
   // return Promise.resolve(users[id]);
-  return pool.query(`
-  SELECT * FROM users
-  WHERE id = $1
-  ` , [id])
-    .then(res => res.rows[0])
+  const queryString = `
+    SELECT *
+    FROM users
+    WHERE id = $1;
+  `;
+  const values = [id];
+  return pool.query(queryString, values)
+    .then(res => res.rows[0] || null)
     .catch(e => console.log(e));
 }
 exports.getUserWithId = getUserWithId;
@@ -62,18 +63,19 @@ exports.getUserWithId = getUserWithId;
  * @return {Promise<{}>} A promise to the user.
  */
 const addUser =  function(user) {
-  // const userId = Object.keys(users).length + 1;
-  // user.id = userId;
-  // users[userId] = user;
-  // return Promise.resolve(user);
-  return pool.query(`
-  INSERT INTO users(name, email, password)
-  VALUES ($1, $2, $3) RETURNING *;`,[user.name, user.email, user.password]) //or Object.values(user)
+  const queryString = `
+  INSERT INTO users(name, email, password) 
+  VALUES ($1, $2, $3) 
+  RETURNING *;
+  `;
+  const values = [user.name, user.email, user.password];
+  return pool.query(queryString, values)
+  .then(res => res.rows[0])
+  .catch(e => console.log(e));
   //You need RETURNING * otherwise 'res' wont contain anything because your SQL query is an insertion and not a SELECT.
   //Add RETURNING *; to the end of an INSERT query to return the objects that were inserted. AND :
   //This is(RETURNING *) handy when you need the auto generated id of an object you've just added to the database
-  .then(res => console.log(res.rows[0]))
-  .catch(e => console.log(e));
+  
 }
 //Checking in psql after sign up:
 //SElECT * FROM users
@@ -89,9 +91,21 @@ exports.addUser = addUser;
  * @param {string} guest_id The id of the user.
  * @return {Promise<[{}]>} A promise to the reservations.
  */
+//If you login and want to see all of your reservation:
 const getAllReservations = function(guest_id, limit = 10) {
-  return getAllProperties(null, 2);
-}
+  const queryString = `
+  SELECT properties.*, reservations.*
+  FROM properties
+  JOIN reservations ON reservations.property_id = properties.id
+  WHERE reservations.guest_id= $1 
+  AND end_date < now()::date
+  LIMIT $2;
+  `;
+  const values = [guest_id, limit];
+  return pool.query(queryString, values)
+  .then(res => res.rows)
+  .catch(e => console.log(e));
+};
 exports.getAllReservations = getAllReservations;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
