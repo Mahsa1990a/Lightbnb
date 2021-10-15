@@ -24,7 +24,16 @@ const getUserWithEmail = function(email) {
   `;
   const values = [email];
   return pool.query(queryString, values)
-    .then(res => res.rows[0] || null)
+    .then(res => res.rows[0] || null) 
+
+    // OR
+    // .then((res) =>  {
+    //   if(res.rows.length !== 0) {
+    //     return res.rows[0];
+    //   } else {
+    //     return null;
+    //   }
+    // })
     //console.log("res.rows[0]", res.rows[0]) obj of row
     .catch(e => console.log(e));
   
@@ -51,7 +60,14 @@ const getUserWithId = function(id) {
   `;
   const values = [id];
   return pool.query(queryString, values)
-    .then(res => res.rows[0] || null)
+    // .then(res => res.rows[0] || null) OR:
+    .then(res => {
+      if(res.rows.length === 0){
+       return null;
+      } else {
+        return res.rows[0];
+      }
+    })
     .catch(e => console.log(e));
 }
 exports.getUserWithId = getUserWithId;
@@ -144,6 +160,7 @@ const getAllProperties = function(options, limit = 10) {
     queryString += `city LIKE $${queryParams.length} `; //create a WHERE clause for the city
   } //              We can use the length of the array to dynamically get the $n placeholder number
   
+  // if an owner_id is passed in, only return properties belonging to that owner.
   if (options.owner_id) {
     if (queryParams.length >= 1){
       queryString += 'AND ';
@@ -153,18 +170,18 @@ const getAllProperties = function(options, limit = 10) {
   }
 
   if (options.minimum_price_per_night) {
-    if (queryParams.length >= 1){
+    if (queryParams.length >= 1) {
       queryString += 'AND ';
     }
-    queryParams.push(options.minimum_price_per_night);
+    queryParams.push(options.minimum_price_per_night * 100); //prices are in cents
     queryString += `cost_per_night >= $${queryParams.length}`;
   }
 
   if (options.maximum_price_per_night) {
-    if (queryParams.length >= 1){
+    if (queryParams.length >= 1) {
       queryString += ' AND ';
     }
-    queryParams.push(options.maximum_price_per_night);
+    queryParams.push(options.maximum_price_per_night * 100);
     queryString += `cost_per_night <= $${queryParams.length}`;
   }
   
@@ -173,6 +190,7 @@ const getAllProperties = function(options, limit = 10) {
     GROUP BY properties.id
   `;
 
+  //if a minimum_rating is passed in
   if (options.minimum_rating) {
     queryParams.push(options.minimum_rating);
     queryString += `HAVING avg(property_reviews.rating) >= $${queryParams.length}`;
@@ -185,8 +203,8 @@ const getAllProperties = function(options, limit = 10) {
   `;
 
   // 5 Console log everything just to make sure we've done it right
-  console.log("queryString from getAllProperties:", queryString);
-  console.log("queryParams from getAllProperties:", queryParams);
+  console.log("queryString from getAllProperties:  ---------> ", queryString);
+  console.log("queryParams from getAllProperties: ---------> ", queryParams);
 
   // 6 Run the query
   return pool.query(queryString, queryParams)
@@ -238,8 +256,8 @@ const addProperty = function(property) {
     property.post_code
   ] // or Object.values(property);
 
-  console.log("queryString from addProperty:", queryString);
-  console.log("values from addProperty:", values);
+  console.log("queryString from addProperty: ---------> ", queryString);
+  console.log("values from addProperty: ---------> ", values);
 
   return pool.query(queryString, values)
   .then(res => res.rows[0])
